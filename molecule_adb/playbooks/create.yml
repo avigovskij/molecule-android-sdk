@@ -1,0 +1,17 @@
+---
+- name: Playbook for Android devices creation on emulator host
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Create avds
+      ansible.builtin.shell: >-
+        echo 'no' | avdmanager create avd -f -n {{ item.name }} -k 'system-images;{{ item.android_api_level }};{{ item.apis_profile }};{{ item.arch }}'
+      loop: "{{ molecule_yml.platforms }}"
+      failed_when: false
+      register: output
+
+    - name: Run devices on emulator
+      ansible.builtin.shell: >-
+        emulator -avd '{{ item.name }}' &
+      loop: "{{ molecule_yml.platforms }}"

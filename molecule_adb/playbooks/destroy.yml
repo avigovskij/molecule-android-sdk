@@ -1,0 +1,9 @@
+---
+- name: Playbook for Android devices creation on emulator host
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Debug
+      ansible.builtin.debug:
+        msg: test
