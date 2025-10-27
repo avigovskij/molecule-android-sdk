@@ -8,10 +8,35 @@
       ansible.builtin.shell: >-
         echo 'no' | avdmanager create avd -f -n {{ item.name }} -k 'system-images;{{ item.android_api_level }};{{ item.apis_profile }};{{ item.arch }}'
       loop: "{{ molecule_yml.platforms }}"
-      failed_when: false
-      register: output
 
     - name: Run devices on emulator
       ansible.builtin.shell: >-
         emulator -avd '{{ item.name }}' &
+        echo $!
+      register: emulator_results
       loop: "{{ molecule_yml.platforms }}"
+
+    - name: Populate instance config
+      ansible.builtin.set_fact:
+        instance_conf_dict: {
+          "name": "{{ item.name }}",
+          "android_api_level": "{{ item.android_api_level }}",
+          "apis_profile": "{{ item.apis_profile }}",
+          "arch": "{{ item.arch }}",
+          "emulator_pid": "{{ (emulator_results.results | selectattr('item.name', 'equalto', item.name) | first).stdout_lines | first | int }}"
+        }
+      with_items: "{{ molecule_yml.platforms }}"
+      loop_control:
+        label: "{{ item.name }}"
+        index_var: i
+      register: instance_config_dict
+
+    - name: Convert instance config dict to a list
+      ansible.builtin.set_fact:
+        instance_conf: "{{ instance_config_dict.results | map(attribute='ansible_facts.instance_conf_dict') | list }}"
+    
+    - name: Dump instance config
+      ansible.builtin.copy:
+        content: "{{ instance_conf | to_json | from_json | to_yaml }}"
+        dest: "{{ molecule_instance_config }}"
+        mode: 0600

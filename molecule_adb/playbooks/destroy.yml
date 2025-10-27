@@ -4,6 +4,17 @@
   gather_facts: false
 
   tasks:
-    - name: Debug
-      ansible.builtin.debug:
-        msg: test
+    - name: Read instance config
+      ansible.builtin.set_fact:
+        platforms: "{{ lookup('file', molecule_instance_config) | from_yaml }}"
+
+    - name: Kill emulation processes
+      ansible.builtin.shell: >-
+        kill -9 {{ item.emulator_pid }}
+      loop: "{{ platforms }}"
+
+    - name: Destroy avds
+      ansible.builtin.shell: >-
+        avdmanager delete avd -n {{ item.name }}
+      loop: "{{ molecule_yml.platforms }}"
+      failed_when: false
