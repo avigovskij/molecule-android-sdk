@@ -4,13 +4,9 @@ from molecule.api import Driver
 
 
 class ADBMoleculeDriver(Driver):
-    """
-    
-    """
-
     def __init__(self, config=None):
         super(ADBMoleculeDriver, self).__init__(config)
-        self._name = 'molecule_adb'
+        self._name = "molecule_adb"
 
     @property
     def name(self):
@@ -35,16 +31,14 @@ class ADBMoleculeDriver(Driver):
 
     def login_options(self, instance_name):
         return super().login_options(instance_name)
-    
+
     def sanity_checks(self):
         # TODO: Add implement of android SDK availablility
-        bin_requirements = [
-            'emulator',
-            'adb',
-            'avdmanager'
-        ]
+        bin_requirements = ["emulator", "adb", "avdmanager"]
 
         for bin_requirement in bin_requirements:
-            rc = os.system(f'which {bin_requirement}')
+            rc = os.system(f"which {bin_requirement}")
             if rc != 0:
-                raise Exception(f'Cannot continue! {bin_requirement} should be exported to PATH for correct {self.name} work!')
+                raise Exception(
+                    f"Cannot continue! {bin_requirement} should be exported to PATH for correct {self.name} work!"
+                )
