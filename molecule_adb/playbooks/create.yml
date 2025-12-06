@@ -2,27 +2,29 @@
 - name: Playbook for Android devices creation on emulator host
   hosts: localhost
   gather_facts: false
+  vars:
+    termux_apk_build: https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_arm64-v8a.apk
 
   tasks:
-    - name: Reload adb server
+    - name: Create | Reload adb server
       ansible.builtin.import_role:
         name: reload_adb
 
-    - name: Create avds
+    - name: Create | Use avdmanager create command
       ansible.builtin.shell: >-
         echo 'no' | avdmanager create avd -f -n {{ item.name }}
         -k 'system-images;{{ item.android_api_level }};{{ item.api_profile }};{{ item.arch }}'
         {{ ( ['', '-d', item.device_id] | join(' ') ) if 'device_id' in item else ''  }}
       loop: "{{ molecule_yml.platforms }}"
 
-    - name: Run devices on emulator
+    - name: Create | Run devices on emulator
       ansible.builtin.shell: >-
         emulator -avd '{{ item.name }}' -port {{ item.port }} &
         echo $!
       register: emulator_results
       loop: "{{ molecule_yml.platforms }}"
 
-    - name: Populate instance config
+    - name: Create | Populate instance config
       ansible.builtin.set_fact:
         instance_conf_dict: {
           "name": "{{ item.name }}",
@@ -42,17 +44,17 @@
         index_var: i
       register: instance_config_dict
 
-    - name: Convert instance config dict to a list
+    - name: Create | Convert instance config dict to a list
       ansible.builtin.set_fact:
         instance_conf: "{{ instance_config_dict.results | map(attribute='ansible_facts.instance_conf_dict') | list }}"
 
-    - name: Dump instance config
+    - name: Create | Dump instance config
       ansible.builtin.copy:
         content: "{{ instance_conf | to_json | from_json | to_yaml }}"
         dest: "{{ molecule_instance_config }}"
         mode: 0600
 
-    - name: Wait until devices are online
+    - name: Create | Wait until devices are online
       ansible.builtin.shell: >-
         adb devices | grep "emulator-{{ item.port }}" | awk '{ print $2 }'
       register: adb_device_attach_status
@@ -61,10 +63,19 @@
       loop_control:
         label: "{{ item.name }}"
 
-    - name: Install termux on android device
+    - name: Create | Save path to termux_apk_build
+      ansible.builtin.set_fact:
+        termux_distr_tmp_path: "/tmp/{{ (termux_apk_build | split('/'))[-1] }}"
+
+    - name: Create | Download termux distr from remote source
+      ansible.builtin.get_url:
+        url: "{{ termux_apk_build }}"
+        dest: "{{ termux_distr_tmp_path }}"
+
+    - name: Create | Install termux on android device
       ansible.builtin.shell: >-
         adb -s emulator-{{ item.port }} install
-        -r /Users/anton/projects/molecule-adb/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_arm64-v8a.apk
+        -r "{{ termux_distr_tmp_path }}"
       register: adb_termux_install_result
       until: adb_termux_install_result.rc == 0
       retries: 20
@@ -73,14 +84,14 @@
       loop_control:
         label: "{{ item.name }}"
 
-    - name: Start android devices as root
+    - name: Create | Start android devices as root
       ansible.builtin.shell: >-
         adb -s emulator-{{ item.port }} root
       loop: "{{ molecule_yml.platforms }}"
       loop_control:
         label: "{{ item.name }}"
 
-    - name: Init termux
+    - name: Create | Init termux
       ansible.builtin.shell: >-
         adb -s emulator-{{ item.port }} shell
         am start -n com.termux/.HomeActivity 'ls -al'
@@ -88,7 +99,7 @@
       loop_control:
         label: "{{ item.name }}"
     
-    - name: Main | Install python3 on android devices
+    - name: Create | Install python3 on android devices
       ansible.builtin.shell: >-
         adb -s emulator-{{ item.port }} shell
         "run-as com.termux files/usr/bin/bash -lic
@@ -106,6 +117,6 @@
       retries: 20
       delay: 5
 
-    - name: Import role for ssh setup
+    - name: Create | Import role for ssh setup
       ansible.builtin.import_role:
         name: avd_ssh
