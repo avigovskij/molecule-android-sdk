@@ -4,14 +4,20 @@
   gather_facts: false
 
   tasks:
+    - name: Reload adb server
+      ansible.builtin.import_role:
+        name: reload_adb
+
     - name: Create avds
       ansible.builtin.shell: >-
-        echo 'no' | avdmanager create avd -f -n {{ item.name }} -k 'system-images;{{ item.android_api_level }};{{ item.apis_profile }};{{ item.arch }}'
+        echo 'no' | avdmanager create avd -f -n {{ item.name }}
+        -k 'system-images;{{ item.android_api_level }};{{ item.api_profile }};{{ item.arch }}'
+        {{ ( ['', '-d', item.device_id] | join(' ') ) if 'device_id' in item else ''  }}
       loop: "{{ molecule_yml.platforms }}"
 
     - name: Run devices on emulator
       ansible.builtin.shell: >-
-        emulator -avd '{{ item.name }}' &
+        emulator -avd '{{ item.name }}' -port {{ item.port }} &
         echo $!
       register: emulator_results
       loop: "{{ molecule_yml.platforms }}"
@@ -21,11 +27,16 @@
         instance_conf_dict: {
           "name": "{{ item.name }}",
           "android_api_level": "{{ item.android_api_level }}",
-          "apis_profile": "{{ item.apis_profile }}",
+          "api_profile": "{{ item.api_profile }}",
           "arch": "{{ item.arch }}",
-          "emulator_pid": "{{ (emulator_results.results | selectattr('item.name', 'equalto', item.name) | first).stdout_lines | first | int }}"
+          "ansible_user": "{{ item.ssh_user }}",
+          "ansible_host": "{{ item.host | default('localhost') }}",
+          "ansible_port": "{{ item.ssh_port | d((item.port | int + 22) | string) }}",
+          "public_ssh_key_file": "{{ item.public_ssh_key_file }}",
+          "private_ssh_key_file": "{{ item.private_ssh_key_file }}",
+          "emulator_pid": "{{ (emulator_results.results | selectattr('item.name', 'equalto', item.name) | first).stdout_lines | first | int }}",
         }
-      with_items: "{{ molecule_yml.platforms }}"
+      loop: "{{ molecule_yml.platforms }}"
       loop_control:
         label: "{{ item.name }}"
         index_var: i
@@ -34,9 +45,67 @@
     - name: Convert instance config dict to a list
       ansible.builtin.set_fact:
         instance_conf: "{{ instance_config_dict.results | map(attribute='ansible_facts.instance_conf_dict') | list }}"
-    
+
     - name: Dump instance config
       ansible.builtin.copy:
         content: "{{ instance_conf | to_json | from_json | to_yaml }}"
         dest: "{{ molecule_instance_config }}"
         mode: 0600
+
+    - name: Wait until devices are online
+      ansible.builtin.shell: >-
+        adb devices | grep "emulator-{{ item.port }}" | awk '{ print $2 }'
+      register: adb_device_attach_status
+      until: adb_device_attach_status.stdout == "device"
+      loop: "{{ molecule_yml.platforms }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Install termux on android device
+      ansible.builtin.shell: >-
+        adb -s emulator-{{ item.port }} install
+        -r /Users/anton/projects/molecule-adb/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_arm64-v8a.apk
+      register: adb_termux_install_result
+      until: adb_termux_install_result.rc == 0
+      retries: 20
+      delay: 15
+      loop: "{{ molecule_yml.platforms }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Start android devices as root
+      ansible.builtin.shell: >-
+        adb -s emulator-{{ item.port }} root
+      loop: "{{ molecule_yml.platforms }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Init termux
+      ansible.builtin.shell: >-
+        adb -s emulator-{{ item.port }} shell
+        am start -n com.termux/.HomeActivity 'ls -al'
+      loop: "{{ molecule_yml.platforms }}"
+      loop_control:
+        label: "{{ item.name }}"
+    
+    - name: Main | Install python3 on android devices
+      ansible.builtin.shell: >-
+        adb -s emulator-{{ item.port }} shell
+        "run-as com.termux files/usr/bin/bash -lic
+        'export PATH=/data/data/com.termux/files/usr/bin:$PATH;
+        export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so;
+        export PREFIX=/data/data/com.termux/files/usr;
+        export TMPDIR=/data/data/com.termux/files/usr/tmp;
+        export HOME=/data/data/com.termux/files/home; cd $HOME;
+        pkg install python3 -y'"
+      loop: "{{ molecule_yml.platforms }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: adb_termux_python_install_result
+      until: adb_termux_python_install_result.rc == 0
+      retries: 20
+      delay: 5
+
+    - name: Import role for ssh setup
+      ansible.builtin.import_role:
+        name: avd_ssh

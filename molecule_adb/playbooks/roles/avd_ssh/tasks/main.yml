@@ -1,0 +1,60 @@
+---
+- name: Main | Install ssh server on android device
+  ansible.builtin.shell: >-
+    adb -s emulator-{{ item.port }} shell
+    "run-as com.termux files/usr/bin/bash -lic
+    'export PATH=/data/data/com.termux/files/usr/bin:$PATH;
+    export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so;
+    export PREFIX=/data/data/com.termux/files/usr;
+    export TMPDIR=/data/data/com.termux/files/usr/tmp;
+    export HOME=/data/data/com.termux/files/home; cd $HOME;
+    pkg install openssh -y'"
+  loop: "{{ molecule_yml.platforms }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: adb_termux_ssh_install_result
+  until: adb_termux_ssh_install_result.rc == 0
+  retries: 20
+  delay: 5
+
+- name: Main | Put public ssh key to authorized_keys
+  ansible.builtin.shell: >-
+    adb -s emulator-{{ item.port }} push
+    {{ item.public_ssh_key_file }}
+    /data/data/com.termux/files/home/.ssh/authorized_keys
+  loop: "{{ molecule_yml.platforms }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Main | Expose ssh port to working machine
+  ansible.builtin.shell: >-
+    adb -s emulator-{{ item.port }} shell
+    "chown -R {{ item.ssh_user }}:{{ item.ssh_user }} /data/data/com.termux/files/home/.ssh chmod 700 /data/data/com.termux/files/home/.ssh; chmod 600 /data/data/com.termux/files/home/.ssh/authorized_keys"
+  loop: "{{ molecule_yml.platforms }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Main | Expose ssh port to working machine
+  ansible.builtin.shell: >-
+    adb -s emulator-{{ item.port }} forward
+    tcp:{{ (item.port | int + 22) | string }}
+    tcp:8022
+  register: port_expose_result
+  loop: "{{ molecule_yml.platforms }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+
+- name: Main | Restart sshd daemon
+  ansible.builtin.shell: >-
+    adb -s emulator-{{ item.port }} shell
+    "run-as com.termux files/usr/bin/bash -lic
+    'export PATH=/data/data/com.termux/files/usr/bin:$PATH;
+    export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so;
+    export PREFIX=/data/data/com.termux/files/usr;
+    export TMPDIR=/data/data/com.termux/files/usr/tmp;
+    export HOME=/data/data/com.termux/files/home; cd $HOME;
+    sshd'"
+  loop: "{{ molecule_yml.platforms }}"
+  loop_control:
+    label: "{{ item.name }}"

@@ -1,0 +1,8 @@
+---
+- name: Main | Stop adb server
+  ansible.builtin.shell: >-
+    adb kill-server
+
+- name: Main | Start adb server
+  ansible.builtin.shell: >-
+    adb start-server
