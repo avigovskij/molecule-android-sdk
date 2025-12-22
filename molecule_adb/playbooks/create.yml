@@ -1,6 +1,6 @@
 ---
 - name: Playbook for Android devices creation on emulator host
-  hosts: localhost
+  hosts: loopkup('MOLECULE_ADB_HOST') | d('localhost')
   gather_facts: false
   vars:
     termux_apk_build: https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_arm64-v8a.apk
