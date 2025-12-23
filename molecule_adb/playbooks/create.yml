@@ -12,9 +12,11 @@
 
     - name: Create | Use avdmanager create command
       ansible.builtin.shell: >-
-        echo 'no' | avdmanager create avd -f -n  {{ item.name }}
-        -k 'system-images;{{ item.android_api_level }};{{ item.api_profile }};{{ item.arch }}'
-        {{ ( ['', '-d', item.device_id] | join(' ') ) if 'device_id' in item else ''  }}
+        echo 'no' | avdmanager create avd -f -n  {{ item.name }} -k  'system-images;
+        {{ item.android_api_level }};{{ item.api_profile }};
+        {{ item.arch }}' {{ (['', '-d', item.device_id] | join(' ')) if 'device_id' in item else '' }}
+      register: avd_manager_create_result
+      changed_when: avd_manager_create_result.rc == 0
       loop: "{{ molecule_yml.platforms }}"
 
     - name: Create | Run devices on emulator
@@ -26,18 +28,17 @@
 
     - name: Create | Populate instance config
       ansible.builtin.set_fact:
-        instance_conf_dict: {
-          "name": "{{ item.name }}",
-          "android_api_level": "{{ item.android_api_level }}",
-          "api_profile": "{{ item.api_profile }}",
-          "arch": "{{ item.arch }}",
-          "ansible_user": "{{ item.ssh_user }}",
-          "ansible_host": "{{ item.host | default('localhost') }}",
-          "ansible_port": "{{ item.ssh_port | d((item.port | int + 22) | string) }}",
-          "public_ssh_key_file": "{{ item.public_ssh_key_file }}",
-          "private_ssh_key_file": "{{ item.private_ssh_key_file }}",
-          "emulator_pid": "{{ (emulator_results.results | selectattr('item.name', 'equalto', item.name) | first).stdout_lines | first | int }}",
-        }
+        instance_conf_dict:
+          "name": "{{ item.name }}"
+          "android_api_level": "{{ item.android_api_level }}"
+          "api_profile": "{{ item.api_profile }}"
+          "arch": "{{ item.arch }}"
+          "ansible_user": "{{ item.ssh_user }}"
+          "ansible_host": "{{ item.host | default('localhost') }}"
+          "ansible_port": "{{ item.ssh_port | d((item.port | int + 22) | string) }}"
+          "public_ssh_key_file": "{{ item.public_ssh_key_file }}"
+          "private_ssh_key_file": "{{ item.private_ssh_key_file }}"
+          "emulator_pid": "{{ (emulator_results.results | selectattr('item.name', 'equalto', item.name) | first).stdout_lines | first | int }}"
       loop: "{{ molecule_yml.platforms }}"
       loop_control:
         label: "{{ item.name }}"
@@ -52,10 +53,11 @@
       ansible.builtin.copy:
         content: "{{ instance_conf | to_json | from_json | to_yaml }}"
         dest: "{{ molecule_instance_config }}"
-        mode: 0600
+        mode: "0600"
 
     - name: Create | Wait until devices are online
       ansible.builtin.shell: >-
+        set -o pipefail
         adb devices | grep "emulator-{{ item.port }}" | awk '{ print $2 }'
       register: adb_device_attach_status
       until: adb_device_attach_status.stdout == "device"
@@ -73,7 +75,7 @@
         dest: "{{ termux_distr_tmp_path }}"
 
     - name: Create | Install termux on android device
-      ansible.builtin.shell: >-
+      ansible.builtin.command: >-
         adb -s emulator-{{ item.port }} install
         -r "{{ termux_distr_tmp_path }}"
       register: adb_termux_install_result
@@ -85,20 +87,20 @@
         label: "{{ item.name }}"
 
     - name: Create | Start android devices as root
-      ansible.builtin.shell: >-
+      ansible.builtin.command: >-
         adb -s emulator-{{ item.port }} root
       loop: "{{ molecule_yml.platforms }}"
       loop_control:
         label: "{{ item.name }}"
 
     - name: Create | Init termux
-      ansible.builtin.shell: >-
+      ansible.builtin.command: >-
         adb -s emulator-{{ item.port }} shell
         am start -n com.termux/.HomeActivity 'ls -al'
       loop: "{{ molecule_yml.platforms }}"
       loop_control:
         label: "{{ item.name }}"
-    
+
     - name: Create | Install python3 on android devices
       ansible.builtin.shell: >-
         adb -s emulator-{{ item.port }} shell

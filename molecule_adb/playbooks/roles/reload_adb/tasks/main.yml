@@ -1,8 +1,12 @@
 ---
 - name: Main | Stop adb server
-  ansible.builtin.shell: >-
+  ansible.builtin.command: >-
     adb kill-server
+  register: reload_adb_kill_server_result
+  changed_when: reload_adb_kill_server_result.rc == 0
 
 - name: Main | Start adb server
-  ansible.builtin.shell: >-
+  ansible.builtin.command: >-
     adb start-server
+  register: reload_adb_start_server_result
+  changed_when: reload_adb_start_server_result.rc == 0

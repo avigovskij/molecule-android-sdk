@@ -9,12 +9,12 @@
         platforms: "{{ lookup('file', molecule_instance_config) | from_yaml }}"
 
     - name: Destroy | Kill emulation processes
-      ansible.builtin.shell: >-
+      ansible.builtin.command: >-
         kill -9 {{ item.emulator_pid }}
       loop: "{{ platforms }}"
 
     - name: Destroy | Execute avdmanager delete command
-      ansible.builtin.shell: >-
+      ansible.builtin.command: >-
         avdmanager delete avd -n {{ item.name }}
       loop: "{{ molecule_yml.platforms }}"
       failed_when: false

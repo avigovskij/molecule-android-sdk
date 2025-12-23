@@ -12,13 +12,13 @@
   loop: "{{ molecule_yml.platforms }}"
   loop_control:
     label: "{{ item.name }}"
-  register: adb_termux_ssh_install_result
-  until: adb_termux_ssh_install_result.rc == 0
+  register: avd_ssh_install_result
+  until: avd_ssh_install_result.rc == 0
   retries: 20
   delay: 5
 
 - name: Main | Put public ssh key to authorized_keys
-  ansible.builtin.shell: >-
+  ansible.builtin.command: >-
     adb -s emulator-{{ item.port }} push
     {{ item.public_ssh_key_file }}
     /data/data/com.termux/files/home/.ssh/authorized_keys
@@ -29,21 +29,22 @@
 - name: Main | Change permissions for .ssh directory content
   ansible.builtin.shell: >-
     adb -s emulator-{{ item.port }} shell
-    "chown -R {{ item.ssh_user }}:{{ item.ssh_user }} /data/data/com.termux/files/home/.ssh chmod 700 /data/data/com.termux/files/home/.ssh; chmod 600 /data/data/com.termux/files/home/.ssh/authorized_keys"
+    "chown -R {{ item.ssh_user }}:{{ item.ssh_user }} /data/data/com.termux/files/home/.ssh;
+    chmod 700 /data/data/com.termux/files/home/.ssh;  chmod 600 /data/data/com.termux/files/home/.ssh/authorized_keys"
   loop: "{{ molecule_yml.platforms }}"
   loop_control:
     label: "{{ item.name }}"
 
 - name: Main | Expose ssh port to working machine
-  ansible.builtin.shell: >-
+  ansible.builtin.command: >-
     adb -s emulator-{{ item.port }} forward
     tcp:{{ (item.port | int + 22) | string }}
     tcp:8022
-  register: port_expose_result
+  register: avd_ssh_port_expose_result
+  changed_when: avd_ssh_port_expose_result.rc == 0
   loop: "{{ molecule_yml.platforms }}"
   loop_control:
     label: "{{ item.name }}"
-
 
 - name: Main | Restart sshd daemon
   ansible.builtin.shell: >-
