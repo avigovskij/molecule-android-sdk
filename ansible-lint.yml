@@ -1,0 +1,17 @@
+---
+profile: production
+
+exclude_paths: []
+skip_list:
+  - risky-file-permissions
+
+enable_list:
+  - yaml
+  - no-log-password
+
+warn_list: []
+# Offline mode disables installation of requirements.yml (useful in restricted environments)
+offline: true
+
+# Set verbosity level (0-3)
+verbosity: 1
