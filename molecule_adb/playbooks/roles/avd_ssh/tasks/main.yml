@@ -29,8 +29,9 @@
 - name: Main | Change permissions for .ssh directory content
   ansible.builtin.shell: >-
     adb -s emulator-{{ item.port }} shell
-    "chown -R {{ item.ssh_user }}:{{ item.ssh_user }} /data/data/com.termux/files/home/.ssh;
-    chmod 700 /data/data/com.termux/files/home/.ssh;  chmod 600 /data/data/com.termux/files/home/.ssh/authorized_keys"
+    "chown -R {{ item.termux_ownership }} /data/data/com.termux/files/home/.ssh;
+    chmod 700 /data/data/com.termux/files/home/.ssh;
+    chmod 600 /data/data/com.termux/files/home/.ssh/authorized_keys"
   loop: "{{ molecule_yml.platforms }}"
   loop_control:
     label: "{{ item.name }}"
