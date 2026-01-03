@@ -21,7 +21,7 @@
 
     - name: Create | Run devices on emulator
       ansible.builtin.shell: >-
-        emulator -avd '{{ item.name }}' -port {{ item.port }} &
+        emulator -avd '{{ item.name }}' -port {{ item.port }} {{ item.no_ui ? '-no-window' : '' }} &
         echo $!
       register: emulator_results
       loop: "{{ molecule_yml.platforms }}"
