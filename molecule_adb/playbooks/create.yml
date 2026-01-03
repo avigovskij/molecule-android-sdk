@@ -21,10 +21,10 @@
 
     - name: Create | Run devices on emulator
       ansible.builtin.shell: >-
-        emulator -avd '{{ item.name }}' -port {{ item.port }} {{ item.no_ui ? '-no-window' : '' }} &
+        emulator -avd '{{ item.name }}' -port {{ item.port }} {{ '-no-window' if item.no_ui | d(true) else '' }} &
         echo $!
       register: emulator_results
-      loop: "{{ molecule_yml.platforms }}"
+      loop: "{{ molecule_yml.platforms }}" 
 
     - name: Create | Wait until devices are online
       ansible.builtin.shell: >-
@@ -86,8 +86,8 @@
         label: "{{ item.name }}"
       register: adb_termux_python_install_result
       until: not adb_termux_python_install_result.failed
-      retries: 20
-      delay: 5
+      retries: 100
+      delay: 1
 
     - name: Main | Define termux user
       ansible.builtin.shell: >-
