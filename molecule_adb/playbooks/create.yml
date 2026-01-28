@@ -71,23 +71,37 @@
       loop_control:
         label: "{{ item.name }}"
 
+    - name: Create | Check if shell is available
+      ansible.builtin.command: >-
+        adb -s emulator-{{ item.port }} shell 'ls /data/data/com.termux/files/usr/bin/bash'
+      register: adb_termux_check_shell
+      until: adb_termux_check_shell.rc == 0
+      retries: 20
+      delay: 1
+      loop: "{{ molecule_yml.platforms }}"
+      loop_control:
+        label: "{{ item.name }}"
+
     - name: Create | Install python3 on android devices
       ansible.builtin.shell: >-
-        adb -s emulator-{{ item.port }} shell
-        "run-as com.termux files/usr/bin/bash -lic
-        'export PATH=/data/data/com.termux/files/usr/bin:$PATH;
+        adb -s emulator-{{ item.port }} shell "run-as com.termux files/usr/bin/bash -lic
+        'export PATH=/data/data/com.termux/files/usr/bin:\$PATH;
         export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so;
         export PREFIX=/data/data/com.termux/files/usr;
         export TMPDIR=/data/data/com.termux/files/usr/tmp;
-        export HOME=/data/data/com.termux/files/home; cd $HOME;
-        pkg install python3 -y'"
+        export HOME=/data/data/com.termux/files/home;
+        cd \$HOME;
+        pkg install -y python'"
       loop: "{{ molecule_yml.platforms }}"
       loop_control:
         label: "{{ item.name }}"
       register: adb_termux_python_install_result
-      until: not adb_termux_python_install_result.failed
-      retries: 100
-      delay: 1
+      failed_when: false
+
+    - name: Main | Assert that python was installed
+      ansible.builtin.assert:
+        that: item.rc == 0
+      loop: "{{ adb_termux_python_install_result.results }}"
 
     - name: Main | Define termux user
       ansible.builtin.shell: >-
@@ -112,10 +126,6 @@
           {{
             molecule_yml | combine({ 'platforms': platforms_with_users})
           }}
-
-    - name: Debug
-      ansible.builtin.debug:
-        var: molecule_yml.platforms
 
     - name: Create | Import role for ssh setup
       ansible.builtin.import_role:

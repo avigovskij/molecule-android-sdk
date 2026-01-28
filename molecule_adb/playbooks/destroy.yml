@@ -8,9 +8,10 @@
       ansible.builtin.set_fact:
         platforms: "{{ lookup('file', molecule_instance_config) | from_yaml }}"
 
-    - name: Destroy | Kill emulation processes
+    - name: Destroy | Send kill signal to emulation processes
       ansible.builtin.command: >-
         kill -9 {{ item.emulator_pid }}
+      failed_when: false
       loop: "{{ platforms }}"
 
     - name: Destroy | Execute avdmanager delete command
