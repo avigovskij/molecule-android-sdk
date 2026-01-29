@@ -3,11 +3,24 @@ driver:
   name: molecule_adb
 platforms:
   - name: molecule_sample_avd_1
-    android_api_level: 'android-36'
-    apis_profile: 'google_apis'
-    arch: 'arm64-v8a'
+    android_api_level: "android-35"
+    api_profile: "default"
+    arch: "arm64-v8a"
+    port: 15000
+    # Set this vars if you need to use your own keys
+    # public_ssh_key_file: ~/.ssh/id_ed25519.pub
+    # private_ssh_key_file: ~/.ssh/id_ed25519
 
   - name: molecule_sample_avd_2
-    android_api_level: 'android-36'
-    apis_profile: 'google_apis'
-    arch: 'arm64-v8a'
+    android_api_level: "android-35"
+    api_profile: "default"
+    arch: "arm64-v8a"
+    device_id: pixel_tablet
+    port: 16000
+    no_ui: false
+
+  - name: molecule_sample_avd_3
+    android_api_level: "android-35"
+    api_profile: "default"
+    arch: "arm64-v8a"
+    port: 17000
