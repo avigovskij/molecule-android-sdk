@@ -127,6 +127,10 @@
             molecule_yml | combine({ 'platforms': platforms_with_users})
           }}
 
+    - name: Create | Import role for ssh keys pair preparation
+      ansible.builtin.import_role:
+        name: ssh_keys
+
     - name: Create | Import role for ssh setup
       ansible.builtin.import_role:
         name: avd_ssh
