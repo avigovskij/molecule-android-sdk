@@ -19,6 +19,29 @@
       changed_when: avd_manager_create_result.rc == 0
       loop: "{{ molecule_yml.platforms }}"
 
+    - name: Create | Get next len(platforms) ports
+      free_ports:
+        count: "{{ molecule_yml.platforms | length }}"
+        step: 2
+      register: molecule_create_free_ports_result
+
+    - name: Create | Merge platforms with ports
+      ansible.builtin.set_fact:
+        platforms_with_ports: >-
+          {{
+            platforms_with_ports | d([]) + [item | combine({ "port": molecule_create_free_ports_result.free_ports[platform_index]})]
+          }}
+      loop: "{{ molecule_yml.platforms }}"
+      loop_control:
+        index_var: platform_index
+
+    - name: Create | Save accociation between platform and port
+      ansible.builtin.set_fact:
+        molecule_yml: >-
+          {{
+            molecule_yml | combine({ 'platforms': platforms_with_ports})
+          }}
+
     - name: Create | Run devices on emulator
       ansible.builtin.shell: >-
         emulator -avd '{{ item.name }}' -port {{ item.port }} {{ '-no-window' if item.no_ui | d(true) else '' }} &
