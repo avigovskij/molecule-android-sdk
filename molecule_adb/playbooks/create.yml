@@ -11,12 +11,8 @@
         name: reload_adb
 
     - name: Create | Use avdmanager create command
-      ansible.builtin.shell: >-
-        echo 'no' | avdmanager create avd -f
-        -n {{ item.name }}
-        -k 'system-images;{{ item.android_api_level }};{{ item.api_profile }};{{ item.arch }}'{{ (['', '-d', item.device_id] | join(' ')) if 'device_id' in item else '' }}
-      register: avd_manager_create_result
-      changed_when: avd_manager_create_result.rc == 0
+      ansible.builtin.include_role:
+        name: avd
       loop: "{{ molecule_yml.platforms }}"
 
     - name: Create | Get next len(platforms) ports
@@ -46,7 +42,7 @@
 
     - name: Create | Run devices on emulator
       ansible.builtin.shell: >-
-        emulator -avd '{{ item.name }}' -port {{ item.port }} {{ '-no-window' if item.no_ui | d(true) else '' }} &
+        emulator -avd '{{ item.name }}' -port {{ item.port }} {{ '-no-window' if item.no_ui | d(true) else '' }} -gpu host -feature 'Vulkan' &
         echo $!
       register: emulator_results
       loop: "{{ molecule_yml.platforms }}" 
@@ -109,19 +105,21 @@
 
     - name: Create | Install python3 on android devices
       ansible.builtin.shell: >-
-        adb -s emulator-{{ item.port }} shell "run-as com.termux files/usr/bin/bash -lic
+        adb -s emulator-{{ item.port }} shell
+        "run-as com.termux files/usr/bin/bash -lic
         'export PATH=/data/data/com.termux/files/usr/bin:\$PATH;
         export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so;
         export PREFIX=/data/data/com.termux/files/usr;
         export TMPDIR=/data/data/com.termux/files/usr/tmp;
-        export HOME=/data/data/com.termux/files/home;
-        cd \$HOME;
-        pkg install -y python'"
+        export HOME=/data/data/com.termux/files/home; cd \$HOME;
+        pkg install python -y'"
       loop: "{{ molecule_yml.platforms }}"
       loop_control:
         label: "{{ item.name }}"
       register: adb_termux_python_install_result
-      failed_when: false
+      until: adb_termux_python_install_result.rc == 0
+      retries: 20
+      delay: 1
 
     - name: Main | Assert that python was installed
       ansible.builtin.assert:
