@@ -22,6 +22,8 @@
     - name: Create | Get next len(platforms) ports
       free_ports:
         count: "{{ molecule_yml.platforms | length }}"
+        # There are two ports opening on device.
+        # one for console port, one for adb port
         step: 2
       register: molecule_create_free_ports_result
 
