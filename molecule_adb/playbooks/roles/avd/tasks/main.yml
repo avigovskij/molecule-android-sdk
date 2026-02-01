@@ -13,6 +13,6 @@
     regexp: "{{ avd_property.property }}"
     line: '{{ avd_property.property }}={{ avd_property.value }}'
     state: present
-  loop: "{{ item.avd_profile | d([]) }}"
+  loop: "{{ item.avd_profile | d([]) + molecule_yml.driver.common_vars.avd_profile | d([]) }}"
   loop_control:
     loop_var: avd_property

@@ -1,21 +1,23 @@
 ---
 driver:
   name: molecule_adb
+  common_vars:
+    avd_profile:
+      - property: hw.gpu.enabled
+        value: "yes"
+      - property: hw.gpu.mode
+        value: host
 platforms:
   - name: molecule_sample_avd_1
     android_api_level: "android-35"
     api_profile: "default"
     arch: "arm64-v8a"
-    # Set this vars if you need to use your own keys
-    # public_ssh_key_file: ~/.ssh/id_ed25519.pub
-    # private_ssh_key_file: ~/.ssh/id_ed25519
 
   - name: molecule_sample_avd_2
     android_api_level: "android-35"
     api_profile: "default"
     arch: "arm64-v8a"
     device_id: pixel_tablet
-    no_ui: false
 
   - name: molecule_sample_avd_3
     android_api_level: "android-35"
