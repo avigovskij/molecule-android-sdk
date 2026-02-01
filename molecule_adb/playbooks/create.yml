@@ -103,30 +103,7 @@
       loop_control:
         label: "{{ item.name }}"
 
-    - name: Create | Install python3 on android devices
-      ansible.builtin.shell: >-
-        adb -s emulator-{{ item.port }} shell
-        "run-as com.termux files/usr/bin/bash -lic
-        'export PATH=/data/data/com.termux/files/usr/bin:\$PATH;
-        export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so;
-        export PREFIX=/data/data/com.termux/files/usr;
-        export TMPDIR=/data/data/com.termux/files/usr/tmp;
-        export HOME=/data/data/com.termux/files/home; cd \$HOME;
-        pkg install python -y'"
-      loop: "{{ molecule_yml.platforms }}"
-      loop_control:
-        label: "{{ item.name }}"
-      register: adb_termux_python_install_result
-      until: adb_termux_python_install_result.rc == 0
-      retries: 20
-      delay: 1
-
-    - name: Main | Assert that python was installed
-      ansible.builtin.assert:
-        that: item.rc == 0
-      loop: "{{ adb_termux_python_install_result.results }}"
-
-    - name: Main | Define termux user
+    - name: Create | Define termux user
       ansible.builtin.shell: >-
         adb -s emulator-{{ item.port }} shell
         "stat -c '%U:%G' /data/data/com.termux/files/home/"
@@ -135,7 +112,7 @@
       loop_control:
         label: "{{ item.name }}"
 
-    - name: Main | Add user and group to platforms
+    - name: Create | Add user and group to platforms
       ansible.builtin.set_fact:
         platforms_with_users: >-
           {{
@@ -143,7 +120,7 @@
           }}
       loop: "{{ termux_user_result.results }}"
     
-    - name: Main | Update molecule_yml.platforms
+    - name: Create | Update molecule_yml.platforms
       ansible.builtin.set_fact:
         molecule_yml: >-
           {{
@@ -161,7 +138,7 @@
     - name: Create | Populate instance config
       ansible.builtin.set_fact:
         instance_conf_dict:
-          "name": "{{ item.name }}"
+          "verbose_name": "{{ item.name }}"
           "android_api_level": "{{ item.android_api_level }}"
           "api_profile": "{{ item.api_profile }}"
           "arch": "{{ item.arch }}"
@@ -186,3 +163,25 @@
         content: "{{ instance_conf | to_yaml }}"
         dest: "{{ molecule_instance_config }}"
         mode: "0600"
+
+    - name: Create | Save hosts to ansible host vars
+      ansible.builtin.add_host:
+        hostname: "{{ item.name }}"
+        ansible_ssh_host: "{{ item.ansible_host }}"
+        ansible_ssh_port: "{{ item.ansible_port }}"
+        ansible_ssh_user: "{{ item.ansible_user }}"
+        ansible_ssh_private_key_file: "{{ item.private_ssh_key_file }}"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+        groups:
+          - created_android_devices
+      loop: "{{ instance_conf }}"
+
+
+- name: Play that sets
+  hosts: created_android_devices
+  gather_facts: false
+
+  tasks:
+    - name: Pre config | Install python3
+      ansible.builtin.raw: >-
+        pkg install python -y

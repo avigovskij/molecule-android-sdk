@@ -58,7 +58,7 @@ class ADBMoleculeDriver(Driver):
         instances = self.load_instances_data()
         instance_data = {}
         for instance in instances:
-            if instance['name'] == instance_name:
+            if instance['verbose_name'] == instance_name:
                 instance_data = instance
                 break
 
@@ -68,7 +68,7 @@ class ADBMoleculeDriver(Driver):
         instances = self.load_instances_data()
         instance_data = {}
         for instance in instances:
-            if instance['name'] == instance_name:
+            if instance['verbose_name'] == instance_name:
                 instance_data = instance
                 break
         else:

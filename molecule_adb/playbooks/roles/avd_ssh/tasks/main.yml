@@ -1,21 +1,23 @@
 ---
-- name: Main | Install ssh server on android device
-  ansible.builtin.shell: >-
-    adb -s emulator-{{ item.port }} shell
-    "run-as com.termux files/usr/bin/bash -lic
-    'export PATH=/data/data/com.termux/files/usr/bin:$PATH;
-    export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so;
-    export PREFIX=/data/data/com.termux/files/usr;
-    export TMPDIR=/data/data/com.termux/files/usr/tmp;
-    export HOME=/data/data/com.termux/files/home; cd $HOME;
-    pkg install openssh -y'"
+- name: Main | Start job with ssh server installing
+  adb_termux:
+    avd_port: "{{ item.port }}"
+    cmd: pkg install openssh -y
+  async: 600
+  poll: 0
   loop: "{{ molecule_yml.platforms }}"
   loop_control:
     label: "{{ item.name }}"
-  register: avd_ssh_install_result
-  until: avd_ssh_install_result.rc == 0
-  retries: 20
-  delay: 5
+  register: avd_ssh_install_jobs
+  
+- name: Main | Wait for all async jobs to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: job_results
+  until: job_results.finished
+  retries: 300
+  delay: 2
+  loop: "{{ avd_ssh_install_jobs.results }}" # Loop over the
 
 - name: Main | Put public ssh key to authorized_keys
   ansible.builtin.command: >-
@@ -48,15 +50,9 @@
     label: "{{ item.name }}"
 
 - name: Main | Restart sshd daemon
-  ansible.builtin.shell: >-
-    adb -s emulator-{{ item.port }} shell
-    "run-as com.termux files/usr/bin/bash -lic
-    'export PATH=/data/data/com.termux/files/usr/bin:$PATH;
-    export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so;
-    export PREFIX=/data/data/com.termux/files/usr;
-    export TMPDIR=/data/data/com.termux/files/usr/tmp;
-    export HOME=/data/data/com.termux/files/home; cd $HOME;
-    sshd'"
+  adb_termux:
+    avd_port: "{{ item.port }}"
+    cmd: sshd
   loop: "{{ molecule_yml.platforms }}"
   loop_control:
     label: "{{ item.name }}"
