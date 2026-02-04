@@ -9,13 +9,13 @@
   loop_control:
     label: "{{ item.name }}"
   register: avd_ssh_install_jobs
-  
+
 - name: Main | Wait for all async jobs to complete
   ansible.builtin.async_status:
     jid: "{{ item.ansible_job_id }}"
   register: job_results
   until: job_results.finished
-  retries: 300
+  retries: 3000
   delay: 2
   loop: "{{ avd_ssh_install_jobs.results }}" # Loop over the
 

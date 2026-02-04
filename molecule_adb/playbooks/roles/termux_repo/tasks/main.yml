@@ -1,0 +1,7 @@
+---
+- name: Main | Put content to repofile
+  ansible.builtin.shell: >-
+    adb -s emulator-{{ item.port }} shell "echo '{{ termux_repo_content }}'> {{ termux_repo_source_list_location }}"
+  loop: "{{ molecule_yml.platforms }}"
+  loop_control:
+    label: "{{ item.name }}"

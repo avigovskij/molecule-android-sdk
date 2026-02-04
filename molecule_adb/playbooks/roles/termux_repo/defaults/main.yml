@@ -1,0 +1,4 @@
+---
+termux_repo_source_list_location: /data/data/com.termux/files/usr/etc/apt/sources.list
+termux_repo_content: >-
+  deb http://mirror.mephi.ru/termux/termux-main stable main

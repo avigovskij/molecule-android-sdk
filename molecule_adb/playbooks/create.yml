@@ -20,7 +20,7 @@
         count: "{{ molecule_yml.platforms | length }}"
         # There are two ports opening on device.
         # one for console port, one for adb port
-        step: 2
+        step: 10
       register: molecule_create_free_ports_result
 
     - name: Create | Merge platforms with ports
@@ -131,10 +131,6 @@
       ansible.builtin.import_role:
         name: ssh_keys
 
-    - name: Create | Import role for ssh setup
-      ansible.builtin.import_role:
-        name: avd_ssh
-
     - name: Create | Populate instance config
       ansible.builtin.set_fact:
         instance_conf_dict:
@@ -166,7 +162,7 @@
 
     - name: Create | Save hosts to ansible host vars
       ansible.builtin.add_host:
-        hostname: "{{ item.name }}"
+        hostname: "{{ item.verbose_name }}"
         ansible_ssh_host: "{{ item.ansible_host }}"
         ansible_ssh_port: "{{ item.ansible_port }}"
         ansible_ssh_user: "{{ item.ansible_user }}"
@@ -175,6 +171,14 @@
         groups:
           - created_android_devices
       loop: "{{ instance_conf }}"
+
+    - name: Create | Import role for termux repofile configuration
+      ansible.builtin.import_role:
+        name: termux_repo
+
+    - name: Create | Import role for ssh setup
+      ansible.builtin.import_role:
+        name: avd_ssh
 
 
 - name: Play that sets
