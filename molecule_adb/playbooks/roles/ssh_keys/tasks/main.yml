@@ -1,0 +1,30 @@
+---
+- name: Main | Generate temporary (per current scenario) ssh key if it isn't defined
+  community.crypto.openssh_keypair:
+    path: "{{ molecule_ephemeral_directory }}/tmp_ssh_key"
+    type: ed25519
+    comment: >-
+      SSH key for molecule scenario located in "{{ molecule_scenario_directory }}"
+    state: present
+    force: false
+  register: generated_key
+
+- name: Main | Add user and group to platforms
+  ansible.builtin.set_fact:
+    platforms_with_ssh_keys: >-
+      {{
+        platforms_with_ssh_keys | d([]) + [
+          item | combine({
+            "public_ssh_key_file": item.public_ssh_key_file if "public_ssh_key_file" in item else generated_key.filename + '.pub',
+            "private_ssh_key_file": item.private_ssh_key_file if "private_ssh_key_file" in item else generated_key.filename
+          })
+        ]
+      }}
+  loop: "{{ molecule_yml.platforms }}"
+    
+- name: Main | Update molecule_yml.platforms
+  ansible.builtin.set_fact:
+    molecule_yml: >-
+      {{
+        molecule_yml | combine({ 'platforms': platforms_with_ssh_keys})
+      }}

@@ -1,13 +1,25 @@
 ---
 driver:
   name: molecule_adb
+  common_vars:
+    avd_profile:
+      - property: hw.gpu.enabled
+        value: "yes"
+      - property: hw.gpu.mode
+        value: host
 platforms:
   - name: molecule_sample_avd_1
-    android_api_level: 'android-36'
-    apis_profile: 'google_apis'
-    arch: 'arm64-v8a'
+    android_api_level: "android-35"
+    api_profile: "default"
+    arch: "arm64-v8a"
 
   - name: molecule_sample_avd_2
-    android_api_level: 'android-36'
-    apis_profile: 'google_apis'
-    arch: 'arm64-v8a'
+    android_api_level: "android-35"
+    api_profile: "default"
+    arch: "arm64-v8a"
+    device_id: pixel_tablet
+
+  - name: molecule_sample_avd_3
+    android_api_level: "android-35"
+    api_profile: "default"
+    arch: "arm64-v8a"

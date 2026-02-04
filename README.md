@@ -20,6 +20,6 @@ Provides a molecule driver that can be used to:
 Current project doesn't have team of developers. That's why there's no need to split developing process between branches and develop release cycle.
 
 `develop` – branch with code that worked on developer's machine,
-`releease` – branch with code that worsk on production-ready dedicated server.
+`master` – branch with code that worsk on production-ready dedicated server.
 
 In future it's obligatory to implement release process that will allow code to go through QA.
